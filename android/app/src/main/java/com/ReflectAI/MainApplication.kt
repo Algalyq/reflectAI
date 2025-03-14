@@ -1,4 +1,4 @@
-package com.chatgptmobile
+package com.ReflectAI
 
 import android.app.Application
 import com.facebook.react.PackageList

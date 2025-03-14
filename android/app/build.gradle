@@ -74,13 +74,14 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.chatgptmobile"
+    namespace "com.ReflectAI"
     defaultConfig {
-        applicationId "com.chatgptmobile"
+        applicationId "com.ReflectAI"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        missingDimensionStrategy 'react-native-camera', 'general' //add this line
     }
     signingConfigs {
         debug {
