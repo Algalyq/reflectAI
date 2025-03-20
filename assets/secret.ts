@@ -1,0 +1,1 @@
+export const GOOGLE_GEMINI_API_KEY = "AIzaSyCFYnzF70YoyDS0NGpBVpYbb8psc7fxfhw"
