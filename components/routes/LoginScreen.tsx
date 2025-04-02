@@ -9,10 +9,11 @@ import {
   Alert,
 } from 'react-native';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LoginRequest, LoginResponse, NavigationProps } from '../../shared/types';
 import useAppColor from '../../themed/appColor';
 
-const LoginScreen = React.memo((props: NavigationProps) => {
+const LoginScreen = React.memo((props: any) => {
   const { navigation } = props;
   const appColor = useAppColor();
   const [username, setUsername] = useState<string>('');
@@ -22,14 +23,17 @@ const LoginScreen = React.memo((props: NavigationProps) => {
     const payload: LoginRequest = { username, password };
     try {
       const response = await axios.post<LoginResponse>(
-        'http://172.20.6.78:5002/authorize', 
+        'http://13.60.223.209/authorize', 
         payload
       );
-
-      const { token } = response.data;
-      console.log(token);
+      
+      const { token, username: responseUsername } = response.data;
+      await AsyncStorage.setItem('username', responseUsername);
+      await AsyncStorage.setItem('token', token);
+      
       navigation.navigate('Home');
     } catch (error: any) {
+      console.log(error);
       Alert.alert('Кіру сәтсіз аяқталды', error.response?.data?.message || 'Бірдеңе дұрыс болмады');
     }
   };

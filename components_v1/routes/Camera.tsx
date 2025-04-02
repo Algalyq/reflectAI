@@ -1,62 +1,31 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { RNCamera } from 'react-native-camera';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CameraPage = () => {
   const [emotion, setEmotion] = useState('Күтудемін...');
-  const [isRecording, setIsRecording] = useState(false);
-  const [timer, setTimer] = useState(7);
-  const cameraRef = useRef(null);
   const navigation = useNavigation();
-  const timerRef = useRef(null);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
+  const [isRecording, setIsRecording] = useState(false);
+  const cameraRef = useRef(null);
 
   const startRecording = async () => {
     if (cameraRef.current && !isRecording) {
       setIsRecording(true);
       setEmotion('Жазылуда...');
-      setTimer(7);
-
-      timerRef.current = setInterval(() => {
-        setTimer((prev) => {
-          if (prev <= 1) {
-            stopRecording();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
       try {
-        const options = {
-          maxDuration: 7,
+        const video = await cameraRef.current.recordAsync({
+          maxDuration: 7, // Record for 7 seconds
           quality: RNCamera.Constants.VideoQuality['720p'],
-        };
-
-        const video = await cameraRef.current.recordAsync(options);
-        stopRecording();
+        });
+        setIsRecording(false);
         await processVideo(video.uri);
       } catch (error) {
         console.error('Recording error:', error);
         setEmotion('Жазба сәтсіз аяқталды');
-        stopRecording();
+        setIsRecording(false);
       }
-    }
-  };
-
-  const stopRecording = () => {
-    if (cameraRef.current && isRecording) {
-      cameraRef.current.stopRecording();
-      setIsRecording(false);
-      if (timerRef.current) clearInterval(timerRef.current);
     }
   };
 
@@ -70,20 +39,9 @@ const CameraPage = () => {
     });
 
     try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) throw new Error('Token not found');
-
-      const response = await axios.post(
-        'http://13.60.223.209/analyze_emotion',
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
+      const response = await axios.post('http://172.20.6.78:5001/analyze_emotion', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       const result = response.data;
       setEmotion(`Басым Эмоция: ${result.dominant_emotion}`);
       navigation.navigate('ChatPage', { result: result, fromCamera: true });
@@ -93,22 +51,30 @@ const CameraPage = () => {
     }
   };
 
+  const stopRecording = () => {
+    if (cameraRef.current && isRecording) {
+      cameraRef.current.stopRecording();
+      setIsRecording(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <RNCamera
         ref={cameraRef}
         style={styles.camera}
         type={RNCamera.Constants.Type.front}
-        captureAudio={true}
-      >
-        <View style={styles.emotionContainer}>
-          <Text style={styles.emotionText}>{emotion}</Text>
-          {isRecording && (
-            <Text style={styles.timerText}>Жазу: {timer} сек</Text>
-          )}
-        </View>
-      </RNCamera>
-
+        captureAudio={false}
+        androidCameraPermissionOptions={{
+          title: 'Камераны пайдалануға рұқсат',
+          message: 'Камераңызды пайдалану үшін сіздің рұқсатыңыз қажет',
+          buttonPositive: 'Жарайды',
+          buttonNegative: 'Бас тарту',
+        }}
+      />
+      <View style={styles.emotionContainer}>
+        <Text style={styles.emotionText}>{emotion}</Text>
+      </View>
       <TouchableOpacity
         style={styles.button}
         onPress={isRecording ? stopRecording : startRecording}
@@ -129,29 +95,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   camera: {
-    flex: 1,
+    flex: 0.7,
     width: '100%',
-    justifyContent: 'flex-end',
   },
   emotionContainer: {
+    marginTop: 20,
     padding: 10,
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    backgroundColor: '#fff',
     borderRadius: 8,
-    margin: 20,
-    alignItems: 'center',
+    elevation: 2,
   },
   emotionText: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
   },
-  timerText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 5,
-  },
   button: {
-    margin: 20,
+    marginTop: 20,
     padding: 15,
     backgroundColor: '#007bff',
     borderRadius: 8,

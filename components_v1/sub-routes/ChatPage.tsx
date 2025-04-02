@@ -36,12 +36,12 @@ const ChatPage = React.memo(({ navigation, route }) => {
   const dispatch = useAppDispatch();
   const isFocused = useIsFocused();
   const [isTyping, setIsTyping] = useState(false);
-  const mountedRef = useRef(true); 
+  const mountedRef = useRef(true); // Track if component is mounted
 
   const screenHeight = Dimensions.get('window').height;
   const offset = screenHeight * 0.11;
 
-  const emotion_list = {
+  const emotion_list: { [key: string]: string } = {
     sad: 'қайғы',
     happy: 'көңілді',
     angry: 'ашулы',
@@ -52,9 +52,9 @@ const ChatPage = React.memo(({ navigation, route }) => {
   };
 
   useEffect(() => {
-    mountedRef.current = true;
+    mountedRef.current = true; // Set to true when mounted
     return () => {
-      mountedRef.current = false;
+      mountedRef.current = false; // Set to false when unmounted
     };
   }, []);
 
@@ -76,36 +76,29 @@ const ChatPage = React.memo(({ navigation, route }) => {
   }, [route.params, navigation, dispatch, handlePromptChatGPT]);
 
   const handleLaunchImageLibrary = useCallback(async () => {
-    try {
-      const response = await launchImageLibrary({ mediaType: 'mixed', selectionLimit: 0 });
-      if (response.assets) {
-        response.assets.forEach(async (asset) => {
-          try {
-            const res = await fetch(asset.uri);
-            const data = await res.blob();
-            console.log('file data', data);
-          } catch (err) {
-            console.error('An error occurred while getting the file', err);
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Error launching image library:', error);
-    }
+    const response = await launchImageLibrary({ mediaType: 'mixed', selectionLimit: 0 });
+    response.assets?.map((asset) => {
+      fetch(asset.uri)
+        .then((res) => res.blob())
+        .then((data) => console.log('file data', data))
+        .catch((err) => console.log('an error occurred while getting the file'));
+    });
+    console.log(response);
   }, []);
 
-  const handlePickDocument = useCallback(async () => {
-    try {
-      const res = await pick({
-        allowMultiSelection: true,
-        type: [types.pdf, types.docx],
-      });
-      console.log(res);
-    } catch (err) {
-      if (!DocumentPicker.isCancel(err)) {
-        console.error('Error picking document:', err);
-      }
-    }
+  const handlePickDocument = useCallback(() => {
+    pick({
+      allowMultiSelection: true,
+      type: [types.pdf, types.docx],
+    })
+      .then((res) => {
+        const allFilesArePdfOrDocx = res.every((file) => file.hasRequestedType);
+        if (!allFilesArePdfOrDocx) {
+          console.log('Some files are not PDF or DOCX');
+        }
+        console.log(res);
+      })
+      .catch((err) => console.log('error', err));
   }, []);
 
   useEffect(() => {
@@ -131,12 +124,12 @@ const ChatPage = React.memo(({ navigation, route }) => {
   }, [prompt, dispatch, handlePromptChatGPT]);
 
   const handlePromptChatGPT = useCallback(
-    async (prompt) => {
-      if (!mountedRef.current) return;
+    async (prompt: string) => {
+      if (!mountedRef.current) return; // Prevent updates if unmounted
       setIsTyping(true);
       try {
         const response = await make_request(prompt);
-        if (!mountedRef.current) return;
+        if (!mountedRef.current) return; // Check again after await
         if (!response) {
           console.log('An error occurred, please try again');
           return;
@@ -146,11 +139,15 @@ const ChatPage = React.memo(({ navigation, route }) => {
       } catch (error) {
         console.error('ChatGPT request failed:', error);
       } finally {
-        if (mountedRef.current) setIsTyping(false);
+        if (mountedRef.current) setIsTyping(false); // Only update if still mounted
       }
     },
     [dispatch]
   );
+
+  const handleOpenExpandInput = useCallback(() => {
+    navigation.navigate('InputRoute');
+  }, [navigation]);
 
   const handleInputLayout = useCallback((event) => {
     const { height } = event.nativeEvent.layout;
@@ -162,6 +159,8 @@ const ChatPage = React.memo(({ navigation, route }) => {
       dispatch(setActiveDrawerRoute('chatpage'));
     }
   }, [isFocused, dispatch]);
+
+  // Typing Animation Component
   const TypingIndicator = () => {
     const [dotOpacity] = useState(new Animated.Value(0));
     const animationRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -199,143 +198,149 @@ const ChatPage = React.memo(({ navigation, route }) => {
     );
   };
 
-  return ( <SafeAreaView style={{ flex: 1, backgroundColor: appColor.main_bg }}>
-  <KeyboardAvoidingView
-    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    style={{ flex: 1 }}
-    keyboardVerticalOffset={Platform.OS === 'ios' ? offset : 0}
-  >
-    <ScrollView
-      contentContainerStyle={{ justifyContent: 'space-between', flexGrow: 1 }}
-      keyboardShouldPersistTaps="always"
-    >
-      <View style={{ flex: 1 }}>
-        {conversation.length > 0 || isTyping ? (
-          <CustomView style={{ paddingHorizontal: 20 }}>
-            {conversation.map((message, index) => (
-              <MessageBox key={index} message={message.content} sender={message.sender} />
-            ))}
-            {isTyping && (
-              <View style={{ alignSelf: 'flex-start', marginTop: 10 }}>
-                <TypingIndicator />
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: appColor.main_bg }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? offset : 0}
+      >
+        <ScrollView
+          contentContainerStyle={{ justifyContent: 'space-between', flexGrow: 1 }}
+          keyboardShouldPersistTaps="always"
+        >
+          <View style={{ flex: 1 }}>
+            {conversation.length > 0 || isTyping ? (
+              <CustomView style={{ paddingHorizontal: 20 }}>
+                {conversation.map((message, index) => (
+                  <MessageBox key={index} message={message.content} sender={message.sender} />
+                ))}
+                {isTyping && (
+                  <View style={{ alignSelf: 'flex-start', marginTop: 10 }}>
+                    <TypingIndicator />
+                  </View>
+                )}
+              </CustomView>
+            ) : (
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <View
+                  style={{
+                    borderRadius: 50,
+                    padding: 10,
+                    backgroundColor: appColor.inverseBlackWhite,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                />
               </View>
             )}
-          </CustomView>
-        ) : (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <View
-              style={{
-                borderRadius: 50,
-                padding: 10,
-                backgroundColor: appColor.inverseBlackWhite,
-                justifyContent: 'center',
-                alignItems: 'center',
+          </View>
+        </ScrollView>
+
+        <View style={[styles.text_box_container, { backgroundColor: appColor.main_bg }]}>
+          <View style={{ flexDirection: 'row', flexShrink: 1, marginRight: 20, alignItems: 'center' }}>
+            {main_icons_hidden ? (
+              <View
+                style={{
+                  width: 35,
+                  height: 35,
+                  backgroundColor: appColor.line_color,
+                  borderRadius: 50,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icons.PlusIcon style={{ width: 25, height: 25 }} />
+              </View>
+            ) : (
+              <>
+                <Icons.CameraIcon
+                  onPress={() => navigation.navigate('Camera')}
+                  style={{ width: 35, height: 35 }}
+                />
+                <Icons.ImageIcon
+                  onPress={handleLaunchImageLibrary}
+                  style={{ width: 25, height: 25, marginLeft: 10 }}
+                />
+                <Icons.FolderIcon
+                  onPress={handlePickDocument}
+                  style={{ width: 25, height: 25, marginLeft: 15 }}
+                />
+              </>
+            )}
+          </View>
+          <View style={{ flex: 1, position: 'relative', justifyContent: 'flex-end' }}>
+            <TextInput
+              multiline
+              style={[
+                styles.text_input,
+                { borderWidth: 1, borderColor: appColor.line_color, color: appColor.inverseWhiteBlack },
+              ]}
+              placeholder="Жазу"
+              value={prompt}
+              placeholderTextColor={appColor.line_color}
+              onLayout={handleInputLayout}
+              onChangeText={(text) => {
+                dispatch(updatePromptInput(text));
+                set_main_icons_hidden(text.length > 0);
               }}
             />
+            {!main_icons_hidden && (
+              <View style={{ position: 'absolute', right: 10, opacity: 0.6, bottom: 10 }}>
+                <Icons.MicIcon style={{ width: 25, height: 25 }} />
+              </View>
+            )}
           </View>
-        )}
-      </View>
-    </ScrollView>
-
-    <View style={[styles.text_box_container, { backgroundColor: appColor.main_bg }]}>
-      <View style={{ flexDirection: 'row', flexShrink: 1, marginRight: 20, alignItems: 'center' }}>
-        {main_icons_hidden ? (
-          <View
-            style={{
-              width: 35,
-              height: 35,
-              backgroundColor: appColor.line_color,
-              borderRadius: 50,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Icons.PlusIcon style={{ width: 25, height: 25 }} />
-          </View>
-        ) : (
-          <>
-            <Icons.CameraIcon
-              onPress={() => navigation.navigate('Camera')}
-              style={{ width: 35, height: 35 }}
-            />
-            <Icons.ImageIcon
-              onPress={handleLaunchImageLibrary}
-              style={{ width: 25, height: 25, marginLeft: 10 }}
-            />
-            <Icons.FolderIcon
-              onPress={handlePickDocument}
-              style={{ width: 25, height: 25, marginLeft: 15 }}
-            />
-          </>
-        )}
-      </View>
-      <View style={{ flex: 1, position: 'relative', justifyContent: 'flex-end' }}>
-        <TextInput
-          multiline
-          style={[
-            styles.text_input,
-            { borderWidth: 1, borderColor: appColor.line_color, color: appColor.inverseWhiteBlack },
-          ]}
-          placeholder="Жазу"
-          value={prompt}
-          placeholderTextColor={appColor.line_color}
-          onLayout={handleInputLayout}
-          onChangeText={(text) => {
-            dispatch(updatePromptInput(text));
-            set_main_icons_hidden(text.length > 0);
-          }}
-        />
-      </View>
-      <View style={{ flexShrink: 1, marginLeft: 20 }}>
+          <View style={{ flexShrink: 1, marginLeft: 20 }}>
             {main_icons_hidden ? (
               <Icons.ArrowUpIcon onPress={handleSubmitPrompt} style={{ width: 25, height: 25 }} />
             ) : (
-              <></>
+              <Icons.HeadsetIcon style={{ width: 25, height: 25 }} />
             )}
-      </View>
-      {/* {showExpandBtn && (
-        <Icons.ExpandIcon
-          onPress={handleOpenExpandInput}
-          style={{ width: 25, height: 25, position: 'absolute', top: 5, right: 20 }}
-        />
-      )} */}
-    </View>
-  </KeyboardAvoidingView>
-</SafeAreaView>
-);
+          </View>
+          {showExpandBtn && (
+            <Icons.ExpandIcon
+              onPress={handleOpenExpandInput}
+              style={{ width: 25, height: 25, position: 'absolute', top: 5, right: 20 }}
+            />
+          )}
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 });
 
 const styles = StyleSheet.create({
-text_input: {
-minHeight: 40,
-borderRadius: 20,
-width: '100%',
-paddingHorizontal: 14,
-fontSize: 20,
-maxHeight: 220,
-paddingVertical: 10,
-},
-text_box_container: {
-width: '100%',
-flexDirection: 'row',
-alignItems: 'center',
-justifyContent: 'space-between',
-paddingHorizontal: 20,
-paddingVertical: 10,
-elevation: 2,
-zIndex: 1,
-},
-typingContainer: {
-flexDirection: 'row',
-alignItems: 'center',
-backgroundColor: '#e0e0e0',
-padding: 10,
-borderRadius: 15,
-},
-typingDot: {
-fontSize: 20,
-color: '#333',
-},
+  text_input: {
+    minHeight: 40,
+    borderRadius: 20,
+    width: '100%',
+    paddingHorizontal: 14,
+    fontSize: 20,
+    maxHeight: 220,
+    paddingVertical: 10,
+  },
+  text_box_container: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    elevation: 2,
+    zIndex: 1,
+  },
+  typingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e0e0e0',
+    padding: 10,
+    borderRadius: 15,
+  },
+  typingDot: {
+    fontSize: 20,
+    color: '#333',
+  },
 });
 
 export default ChatPage;

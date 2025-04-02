@@ -1,0 +1,267 @@
+from flask import Flask, request, jsonify, send_from_directory
+import jwt
+from datetime import datetime, timedelta
+from functools import wraps
+import sqlite3
+import cv2
+import numpy as np
+import os
+from tensorflow.keras.models import load_model
+import logging
+from deepface import DeepFace
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'Locasjdsdjsd32r32njk'  # Secure key
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Database setup
+DB_PATH = 'users.db'
+MODEL_PATH = './face_model.h5'
+# Load pre-trained Haar Cascade for face detection
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
+# Load pre-trained emotion recognition model
+if os.path.exists(MODEL_PATH):
+    try:
+        emotion_model = load_model(MODEL_PATH)
+        logger.info("Emotion model loaded successfully")
+    except Exception as e:
+        logger.error(f"Error loading model: {e}")
+        emotion_model = None
+else:
+    logger.error(f"Model file {MODEL_PATH} not found.")
+    emotion_model = None
+
+
+# Emotion labels (match these to your model's training)
+EMOTION_LABELS = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
+
+def init_db():
+    """Initialize the SQLite database and create the users table if it doesn't exist."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    ''')
+    cursor.execute('''
+        INSERT OR IGNORE INTO users (username, password) 
+        VALUES (?, ?)
+    ''', ('testuser', 'testpass123'))
+    conn.commit()
+    conn.close()
+
+# Token required decorator
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'message': 'Token is missing'}), 401
+        try:
+            token = token.split(" ")[1]  # Remove "Bearer " prefix
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+        except Exception as e:
+            return jsonify({'message': f'Error validating token: {str(e)}'}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+# --- Authentication Routes ---
+@app.route('/authorize', methods=['POST'])
+def authorize():
+    auth_data = request.get_json()
+    if not auth_data or not auth_data.get('username') or not auth_data.get('password'):
+        return jsonify({'message': 'Missing username or password'}), 400
+    
+    username = auth_data['username']
+    password = auth_data['password']
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT username, password FROM users WHERE username = ?', (username,))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if not user or user[1] != password:
+        return jsonify({'message': 'Invalid credentials'}), 401
+    
+    token = jwt.encode(
+        {'username': username, 'exp': datetime.utcnow() + timedelta(minutes=30)},
+        app.config['SECRET_KEY'], algorithm="HS256"
+    )
+    return jsonify({'message': 'Login successful', 'token': token, 'username': username}), 200
+
+@app.route('/register', methods=['POST'])
+def register():
+    reg_data = request.get_json()
+    if not reg_data or not reg_data.get('username') or not reg_data.get('password'):
+        return jsonify({'message': 'Missing username or password'}), 400
+    
+    username = reg_data['username']
+    password = reg_data['password']
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    try:
+        cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, password))
+        conn.commit()
+        token = jwt.encode(
+            {'username': username, 'exp': datetime.utcnow() + timedelta(minutes=30)},
+            app.config['SECRET_KEY'], algorithm="HS256"
+        )
+        conn.close()
+        return jsonify({'message': 'Registration successful', 'token': token}), 201
+    except sqlite3.IntegrityError:
+        conn.close()
+        return jsonify({'message': 'Username already exists'}), 409
+
+
+
+def get_rotation(video_path):
+    try:
+        probe = ffmpeg.probe(video_path)
+        rotation = next((stream['tags'].get('rotate', 0) for stream in probe['streams'] if 'tags' in stream), 0)
+        return int(rotation)
+    except Exception as e:
+        logger.error(f"Failed to get rotation: {e}")
+        return 0
+
+def rotate_frame(frame, rotation_code):
+    """Rotate the frame based on the rotation code."""
+    if rotation_code == 90:
+        return cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+    elif rotation_code == 270:
+        return cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    elif rotation_code == 180:
+        return cv2.rotate(frame, cv2.ROTATE_180)
+    return frame  # No rotation if code is 0 or unrecognized
+
+def detect_emotion_from_frame(frame):
+    """
+    Detect emotion from a frame using DeepFace and/or a custom TensorFlow model.
+    """
+    try:
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+        logger.info(f"Detected {len(faces)} faces in frame")
+
+        if len(faces) == 0:
+            logger.warning("No faces detected")
+            return None
+
+        (x, y, w, h) = faces[0]
+        face_color_roi = frame[y:y+h, x:x+w]
+        face_analysis = DeepFace.analyze(img_path=face_color_roi, actions=['emotion'], enforce_detection=False)
+        deepface_emotion = face_analysis[0]["dominant_emotion"]
+        logger.info(f"DeepFace emotion: {deepface_emotion}, Full analysis: {face_analysis[0]['emotion']}")
+
+        face_roi = gray[y:y+h, x:x+w]
+        face_img = cv2.resize(face_roi, (48, 48))
+        face_img = face_img / 255.0
+        face_img = np.expand_dims(face_img, axis=(0, -1))
+
+        return deepface_emotion
+    except Exception as e:
+        logger.error(f"Error in emotion detection: {e}")
+        return None
+
+def detect_emotions_from_video(video_path):
+    """Process video and detect emotions across frames, saving correctly oriented frames."""
+    shots_dir = "shots"
+    if not os.path.exists(shots_dir):
+        os.makedirs(shots_dir)
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return {"error": "Could not open video file"}
+
+    # Get video rotation metadata (if available)
+    # In detect_emotions_from_video:
+    rotation = 90
+    logger.info(f"Video rotation metadata: {rotation} degrees")
+
+    emotions_count = {"happy": 0, "sad": 0, "angry": 0, "neutral": 0, "surprised": 0, "disgust": 0, "fear": 0}
+    frame_count = 0
+    analyzed_frames = 0
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Rotate the frame based on metadata
+        frame = rotate_frame(frame, rotation)
+
+        if frame_count % 10 == 0:  # Process every 10th frame
+            try:
+                frame_filename = os.path.join(shots_dir, f"frame_{frame_count}.jpg")
+                cv2.imwrite(frame_filename, frame)
+                logger.info(f"Saved frame {frame_count} to {frame_filename}")
+
+                emotion = detect_emotion_from_frame(frame)
+                if emotion:
+                    emotions_count[emotion] += 1
+                    analyzed_frames += 1
+            except Exception as e:
+                logger.error(f"Error processing frame {frame_count}: {e}")
+
+        frame_count += 1
+
+    cap.release()
+
+    if frame_count == 0:
+        return {"error": "No frames processed"}
+    if analyzed_frames == 0:
+        return {"error": "No emotions detected"}
+
+    total_emotion_votes = sum(emotions_count.values())
+    emotion_distribution = {k: (v / total_emotion_votes) * 100 for k, v in emotions_count.items() if total_emotion_votes > 0}
+    dominant_emotion = max(emotions_count, key=emotions_count.get)
+    print(dominant_emotion)
+    return {
+        "dominant_emotion": dominant_emotion,
+        "emotion_distribution": emotion_distribution,
+        "total_frames": frame_count,
+        "analyzed_frames": analyzed_frames,
+        "shots_folder": shots_dir
+    }
+
+@app.route('/analyze_emotion', methods=['POST'])
+@token_required
+def analyze_emotion():
+    """API endpoint to analyze emotion from uploaded video."""
+    if 'video' not in request.files:
+        return jsonify({"error": "No video file provided"}), 400
+
+    video_file = request.files['video']
+    if video_file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    video_path = "temp_video.mp4"
+    try:
+        video_file.save(video_path)
+        result = detect_emotions_from_video(video_path)
+    except Exception as e:
+        logger.error(f"Error processing video: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+    finally:
+        if os.path.exists(video_path):
+            os.remove(video_path)
+
+    return jsonify(result)
+  
+# --- Emotion Detection Route ---
+
+
+
+# Initialize database on startup
+init_db()
+
+if __name__ == '__main__':
+    app.run(debug=True)  # Set debug=False in production

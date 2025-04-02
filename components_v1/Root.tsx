@@ -6,9 +6,6 @@ import { NavigationContainer } from "@react-navigation/native";
 import App from "../App";
 
 const RootComponent = React.memo((props: any) => {
-
-console.log('Rendering RootComponent...');
-
     return (
         <Provider store={store}>
             <PaperProvider>

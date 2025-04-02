@@ -11,7 +11,6 @@ import {
 import axios from 'axios';
 import { StackNavigationProp } from '@react-navigation/stack';
 import useAppColor from '../../themed/appColor';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Define the navigation stack param list (consistent with your app)
 type RootStackParamList = {
@@ -44,7 +43,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
   const handleRegister = async () => {
     try {
       const response = await axios.post<RegisterResponse>(
-        'http://13.60.223.209/register', // Replace with your IP if testing on a device
+        'http://172.20.6.78:5002/register', // Replace with your IP if testing on a device
         {
           username,
           password,
@@ -54,8 +53,7 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
         }
       );
 
-      const { token, message: message } = response.data;
-      await AsyncStorage.setItem('token', token);
+      const { token } = response.data;
       navigation.navigate('Home');
       // Optionally, store the token and go to Home: navigation.replace('Home');
     } catch (error: any) {

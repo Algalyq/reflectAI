@@ -1,4 +1,4 @@
-// src/components/routes/RegisterScreen.tsx
+// src/screens/LoginScreen.tsx
 import React, { useState } from 'react';
 import {
   View,
@@ -9,67 +9,38 @@ import {
   Alert,
 } from 'react-native';
 import axios from 'axios';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { LoginRequest, LoginResponse, NavigationProps } from '../../shared/types';
 import useAppColor from '../../themed/appColor';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Define the navigation stack param list (consistent with your app)
-type RootStackParamList = {
-  Register: undefined;
-  Login: undefined;
-  Home: undefined;
-  Settings: undefined;
-  Camera: undefined;
-  InputRoute: undefined;
-};
-
-// Define props for navigation
-type RegisterScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Register'>;
-
-interface Props {
-  navigation: RegisterScreenNavigationProp;
-}
-
-// API response type for registration
-interface RegisterResponse {
-  message: string;
-  token: string;
-}
-
-const RegisterScreen: React.FC<Props> = ({ navigation }) => {
+const LoginScreen = React.memo((props: NavigationProps) => {
+  const { navigation } = props;
   const appColor = useAppColor();
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
 
-  const handleRegister = async () => {
+  const handleLogin = async () => {
+    const payload: LoginRequest = { username, password };
     try {
-      const response = await axios.post<RegisterResponse>(
-        'http://13.60.223.209/register', // Replace with your IP if testing on a device
-        {
-          username,
-          password,
-        },
-        {
-          headers: { 'Content-Type': 'application/json' },
-        }
+      const response = await axios.post<LoginResponse>(
+        'http://172.20.6.78:5002/authorize', 
+        payload
       );
 
-      const { token, message: message } = response.data;
-      await AsyncStorage.setItem('token', token);
+      const { token } = response.data;
+      console.log(token);
       navigation.navigate('Home');
-      // Optionally, store the token and go to Home: navigation.replace('Home');
     } catch (error: any) {
-      Alert.alert('Тіркеу сәтсіз аяқталды', error.response?.data?.message || 'Бірдеңе дұрыс болмады');
+      Alert.alert('Кіру сәтсіз аяқталды', error.response?.data?.message || 'Бірдеңе дұрыс болмады');
     }
   };
 
   return (
     <View style={[styles.container, { backgroundColor: appColor.main_bg }]}>
       <Text style={[styles.title, { color: appColor.bold_text }]}>
-        Тіркелу
+        Қош келдіңіз
       </Text>
       <Text style={[styles.subtitle, { color: appColor.text_color }]}>
-        Бастау үшін тіркеліңіз
+        Есептік жазбаңызға кіріңіз
       </Text>
 
       <TextInput
@@ -99,20 +70,20 @@ const RegisterScreen: React.FC<Props> = ({ navigation }) => {
       />
 
       <TouchableOpacity
-        style={[styles.registerButton, { backgroundColor: '#003087' }]} // Deep blue
-        onPress={handleRegister}
+        style={[styles.loginButton, { backgroundColor: '#003087' }]} // Fixed blue for button
+        onPress={handleLogin}
       >
-        <Text style={styles.buttonText}>Тіркелу</Text>
+        <Text style={styles.buttonText}>Кіру</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-        <Text style={[styles.loginLink, { color: '#007AFF' }]}>
-          Есептік жазбаңыз бар ма? Кіріңіз
+      <TouchableOpacity onPress={() => navigation.navigate('Registration')}>
+        <Text style={[styles.registerLink, { color: '#007AFF' }]}>
+          Есептік жазбаңыз жоқ па? Тіркеліңіз
         </Text>
       </TouchableOpacity>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -139,7 +110,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     fontSize: 16,
   },
-  registerButton: {
+  loginButton: {
     height: 50,
     borderRadius: 10,
     justifyContent: 'center',
@@ -151,10 +122,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-  loginLink: {
+  registerLink: {
     fontSize: 14,
     textAlign: 'center',
   },
 });
 
-export default RegisterScreen;
+export { LoginScreen };
+export default LoginScreen;

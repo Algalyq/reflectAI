@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { StyleSheet, Text, TextInput, View, useColorScheme, Alert } from "react-native";
+import React from "react";
+import { StyleSheet, Text, TextInput, View, useColorScheme } from "react-native";
 import { DrawerItem, createDrawerNavigator } from '@react-navigation/drawer';
 import ChatPage from "../sub-routes/ChatPage";
 import Icons from "../../assets/icons";
@@ -10,7 +10,6 @@ import ExplorePage from "../sub-routes/ExplorePage";
 import useAppColor from "../../themed/appColor";
 import { useAppDispatch, useAppSelector } from "../../shared/hooks";
 import { clearMessages } from "../../shared/rdx-slice";
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Drawer = createDrawerNavigator();
 
@@ -21,14 +20,6 @@ const Home  = React.memo((props: any) => {
     const app_color_mode = useAppSelector(state => state.main.app_mode);
     const system_color_mode = useColorScheme() || 'light';
     const current_page = useAppSelector(state => state.main.active_drawer_route)
-
-    const [username, setUsername] = useState<string>('');
-
-    useEffect(() => {
-      AsyncStorage.getItem('username').then(value => {
-        if (value) setUsername(value);
-      });
-    }, []);
 
     return (
         <Drawer.Navigator drawerContent={(drawerProps) => {
@@ -52,70 +43,17 @@ const Home  = React.memo((props: any) => {
                                             <Icons.ReflectAIIcon mode={(app_color_mode == "system" ? system_color_mode : app_color_mode) == "dark" ? "light" : "dark"} style={{width: 20, height: 20}} />
                                             </View>} 
                             onPress={() => drawerProps.navigation.navigate('ChatPage')} label={"Reflect AI"} />
-                        <DrawerItem focused={current_page == "EmotionAdvice"} activeTintColor={appColor.bold_text} inactiveTintColor={appColor.bold_text} activeBackgroundColor={appColor.highlight_bg} icon={() => <View style={{padding: 8,}}><Icons.MenuCircleIcon style={{width: 20, height: 20}} /></View>} onPress={() => drawerProps.navigation.navigate('EmotionAdvice')} label={"Кеңес"} />
-
-                        <DrawerItem 
-                            focused={current_page == "Camera"} 
-                            activeTintColor={appColor.bold_text} 
-                            inactiveTintColor={appColor.bold_text} 
-                            activeBackgroundColor={appColor.highlight_bg}
-                            icon={() => (
-                              <View>
-                                <Icons.CameraIcon
-                                  style={{ width: 35, height: 35 }}
-                                />
-                              </View>
-                            )}
-                            onPress={() => drawerProps.navigation.navigate('Camera')} 
-                            label={"Эмоция анықтау"} 
-                          />
+                        {/* <DrawerItem focused={current_page == "explorepage"} activeTintColor={appColor.bold_text} inactiveTintColor={appColor.bold_text} activeBackgroundColor={appColor.highlight_bg} icon={() => <View style={{padding: 8,}}><Icons.MenuCircleIcon style={{width: 20, height: 20}} /></View>} onPress={() => drawerProps.navigation.navigate('ExplorePage')} label={"Explore AI"} /> */}
                     </ScrollView>
-                {/*onTouchEnd={() => props.navigation.navigate('Жөндеу')}  */} 
-                  <View style={{flexDirection: 'row', paddingHorizontal: 15, justifyContent:'space-between', alignItems: 'center'}}>
-                        <View style={{flexDirection: 'row', 
-                                    alignItems: 'center',
-                                    paddingVertical: 15}}>
+                    <View onTouchEnd={() => props.navigation.navigate('Жөндеу')} style={{flexDirection: 'row', paddingHorizontal: 15, justifyContent:'space-between', alignItems: 'center'}}>
+                        <View style={{flexDirection: 'row', alignItems: 'center'}}>
                             <View style={{width: 40, height: 40, backgroundColor: 'orange', borderRadius: 9, alignItems: 'center', justifyContent: 'center'}}>
-                                <Text style={{color: 'white', fontWeight: '600', fontSize: 20}}>{username?.[0] || 'P'}</Text>
+                                <Text style={{color: 'white', fontWeight: '600', fontSize: 20}}>P</Text>
                             </View>
-                            <View style={{marginLeft: 15}}><Text style={{fontWeight: '600', fontSize: 17, color: appColor.bold_text}}>{username || 'Guest'}</Text></View>
+                            <View style={{marginLeft: 15}}><Text style={{fontWeight: '600', fontSize: 17, color: appColor.bold_text}}>Paulos Ab</Text></View>
                         </View>
                         <View style={{opacity: .5}}>
-                        <TouchableOpacity 
-                        onPress={async () => {
-                            Alert.alert(
-                                'Шығу',
-                                'Сіз шынымен шыққыңыз келе ме?',
-                                [
-                                    {
-                                        text: 'Жоқ',
-                                        style: 'cancel',
-                                    },
-                                    {
-                                        text: 'Иә',
-                                        onPress: async () => {
-                                            try {
-                                                await AsyncStorage.clear();
-                                                // Clear messages from Redux store
-                                                dispatch(clearMessages());
-                                                // Reset navigation to Login
-                                                props.navigation.reset({
-                                                    index: 0,
-                                                    routes: [{ name: 'Login' }]
-                                                });
-                                            } catch (error) {
-                                                console.error('Error during logout:', error);
-                                            }
-                                        },
-                                    },
-                                ],
-                                { cancelable: true }
-                            );
-                        }}
-                        style={styles.logoutButton}
-                    >
-                            <Icons.LogoutIcon style={{width: 25, height: 25}} />
-                            </TouchableOpacity>
+                            <Icons.DotsIcon style={{width: 25, height: 25}} />
                         </View>
                     </View>
                 </SafeAreaView>
@@ -167,15 +105,6 @@ const Home  = React.memo((props: any) => {
 })
 
 const styles = StyleSheet.create({
-    logoutButton: {
-        paddingVertical: 15,
-        paddingHorizontal: 20,
-    },
-    logoutText: {
-        fontSize: 16,
-        fontWeight: '500',
-        color: '#FF3B30',
-    },
     search_box: {
         width: '90%', 
         borderRadius: 9, 
