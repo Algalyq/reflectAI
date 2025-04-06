@@ -30,7 +30,7 @@ const Home  = React.memo((props: any) => {
                     <View style={{flexDirection: 'row', marginBottom: 10, position: 'relative', alignItems: 'center', justifyContent: 'center'}}>
                         <TextInput 
                             style={[styles.search_box, {backgroundColor: appColor.search_box, color: appColor.text_color}]}
-                            placeholder="Search" 
+                            placeholder="Іздеу" 
                         />
                         <View style={{position: 'absolute', left: 20, opacity: .5}}>
                             <Icons.SearchIcon style={{width: 25, height: 25}} />

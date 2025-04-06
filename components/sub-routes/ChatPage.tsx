@@ -240,31 +240,12 @@ const ChatPage = React.memo(({ navigation, route }) => {
     <View style={[styles.text_box_container, { backgroundColor: appColor.main_bg }]}>
       <View style={{ flexDirection: 'row', flexShrink: 1, marginRight: 20, alignItems: 'center' }}>
         {main_icons_hidden ? (
-          <View
-            style={{
-              width: 35,
-              height: 35,
-              backgroundColor: appColor.line_color,
-              borderRadius: 50,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Icons.PlusIcon style={{ width: 25, height: 25 }} />
-          </View>
+          <></>
         ) : (
           <>
             <Icons.CameraIcon
               onPress={() => navigation.navigate('Camera')}
               style={{ width: 35, height: 35 }}
-            />
-            <Icons.ImageIcon
-              onPress={handleLaunchImageLibrary}
-              style={{ width: 25, height: 25, marginLeft: 10 }}
-            />
-            <Icons.FolderIcon
-              onPress={handlePickDocument}
-              style={{ width: 25, height: 25, marginLeft: 15 }}
             />
           </>
         )}

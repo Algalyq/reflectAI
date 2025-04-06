@@ -7,7 +7,7 @@ const CustomView = React.memo((props: {style?: ViewStyle, children: any}) => {
     return (
         <ScrollView style={[{flex: 1, backgroundColor: appColor.main_bg}, props.style]}
         contentContainerStyle={{justifyContent:'center'}}>
-            {props.children}
+            {props.children == 'Settings' ? "Жөңдеу" : props.children}
         </ScrollView>
     )
 })

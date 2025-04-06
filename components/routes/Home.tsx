@@ -39,7 +39,7 @@ const Home  = React.memo((props: any) => {
                     <View style={{flexDirection: 'row', marginBottom: 10, position: 'relative', alignItems: 'center', justifyContent: 'center'}}>
                         <TextInput 
                             style={[styles.search_box, {backgroundColor: appColor.search_box, color: appColor.text_color}]}
-                            placeholder="Search" 
+                            placeholder="Іздеу" 
                         />
                         <View style={{position: 'absolute', left: 20, opacity: .5}}>
                             <Icons.SearchIcon style={{width: 25, height: 25}} />
@@ -80,7 +80,11 @@ const Home  = React.memo((props: any) => {
                             </View>
                             <View style={{marginLeft: 15}}><Text style={{fontWeight: '600', fontSize: 17, color: appColor.bold_text}}>{username || 'Guest'}</Text></View>
                         </View>
-                        <View style={{opacity: .5}}>
+                        
+                        <View style={{opacity: .5, flexDirection: 'row', alignItems: 'center'}}>
+                            <TouchableOpacity onPress={() => props.navigation.navigate('Жөндеу')}>
+                             <Icons.DotsIcon style={{width: 25, height: 25}} />
+                             </TouchableOpacity>
                         <TouchableOpacity 
                         onPress={async () => {
                             Alert.alert(
@@ -114,9 +118,11 @@ const Home  = React.memo((props: any) => {
                         }}
                         style={styles.logoutButton}
                     >
+                       
                             <Icons.LogoutIcon style={{width: 25, height: 25}} />
                             </TouchableOpacity>
                         </View>
+                        
                     </View>
                 </SafeAreaView>
         }} screenOptions={{
