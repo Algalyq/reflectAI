@@ -19,6 +19,10 @@ import InputRoute from './components/routes/InputRoute';
 import LoginScreen from './components/routes/LoginScreen';
 import Registration from './components/routes/RegisterScreen';
 import EmotionAdviceScreen from './components/routes/EmotionAdviceScreen';
+import PrivacyPolicy from './components/routes/PrivacyPolicy';
+import FAQ from './components/routes/FAQ';
+import ForgotPasswordScreen from './components/routes/ForgotPasswordScreen';
+
 
 type RootStackParamList = {
   Login: undefined;
@@ -76,6 +80,24 @@ function App(): React.JSX.Element {
         <Stack.Screen 
           name="Login" 
           component={LoginScreen} 
+          options={{
+            headerShown: false,
+            presentation: 'modal'
+          }}
+        />
+<Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+<Stack.Screen 
+          name="PrivacyPolicy" 
+          component={PrivacyPolicy} 
+          options={{
+            headerShown: false,
+            presentation: 'modal'
+          }}
+        />
+        
+        <Stack.Screen 
+          name="FAQ" 
+          component={FAQ} 
           options={{
             headerShown: false,
             presentation: 'modal'

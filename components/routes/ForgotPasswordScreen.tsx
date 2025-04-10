@@ -8,34 +8,36 @@ import {
   Alert,
 } from "react-native";
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LoginRequest, LoginResponse, NavigationProps } from "../../shared/types";
 import useAppColor from "../../themed/appColor";
 
-const LoginScreen = React.memo((props: any) => {
-  const { navigation } = props;
+const ForgotPasswordScreen = ({ navigation }: any) => {
   const appColor = useAppColor();
   const [username, setUsername] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
+  const [newPassword, setNewPassword] = useState<string>("");
 
-  const handleLogin = async () => {
-    const payload: LoginRequest = { username, password };
+  const handleResetPassword = async () => {
+    if (!username || !newPassword) {
+      Alert.alert("Қате", "Пайдаланушы аты мен жаңа құпия сөзді енгізіңіз.");
+      return;
+    }
+
     try {
-      const response = await axios.post<LoginResponse>(
-        "http://13.60.223.209/authorize",
-        payload
+      // Simulate API call to reset password (replace with your actual endpoint)
+      const response = await axios.post(
+        "http://13.60.223.209/reset-password", // Replace with your actual reset password endpoint
+        { username, newPassword }
       );
 
-      const { token, username: responseUsername } = response.data;
-      await AsyncStorage.setItem("username", responseUsername);
-      await AsyncStorage.setItem("token", token);
-
-      navigation.navigate("Home");
+      Alert.alert(
+        "Сәтті",
+        "Құпия сөз сәтті жаңартылды. Енді кіре аласыз.",
+        [{ text: "ОК", onPress: () => navigation.navigate("LoginScreen") }]
+      );
     } catch (error: any) {
       console.log(error);
       Alert.alert(
-        "Кіру сәтсіз аяқталды",
-        error.response?.data?.message || "Бірдеңе дұрыс болмады"
+        "Қате",
+        error.response?.data?.message || "Құпия сөзді жаңарту сәтсіз аяқталды."
       );
     }
   };
@@ -43,10 +45,10 @@ const LoginScreen = React.memo((props: any) => {
   return (
     <View style={[styles.container, { backgroundColor: appColor.main_bg }]}>
       <Text style={[styles.title, { color: appColor.bold_text }]}>
-        Қош келдіңіз
+        Құпия сөзді қалпына келтіру
       </Text>
       <Text style={[styles.subtitle, { color: appColor.text_color }]}>
-        Есептік жазбаңызға кіріңіз
+        Пайдаланушы атыңызды және жаңа құпия сөзді енгізіңіз
       </Text>
 
       <TextInput
@@ -73,36 +75,29 @@ const LoginScreen = React.memo((props: any) => {
             color: appColor.bold_text,
           },
         ]}
-        placeholder="Құпия сөз"
+        placeholder="Жаңа құпия сөз"
         placeholderTextColor={appColor.text_color}
-        value={password}
-        onChangeText={setPassword}
+        value={newPassword}
+        onChangeText={setNewPassword}
         secureTextEntry
         autoCapitalize="none"
       />
 
       <TouchableOpacity
-        style={[styles.loginButton, { backgroundColor: "#003087" }]} // Fixed blue for button
-        onPress={handleLogin}
+        style={[styles.resetButton, { backgroundColor: "#003087" }]}
+        onPress={handleResetPassword}
       >
-        <Text style={styles.buttonText}>Кіру</Text>
+        <Text style={styles.buttonText}>Құпия сөзді жаңарту</Text>
       </TouchableOpacity>
 
-      {/* Forgot Password Link */}
-      <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")}>
-        <Text style={[styles.forgotPasswordLink, { color: "#007AFF" }]}>
-          Құпия сөзді ұмыттыңыз ба?
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => navigation.navigate("Registration")}>
-        <Text style={[styles.registerLink, { color: "#007AFF" }]}>
-          Есептік жазбаңыз жоқ па? Тіркеліңіз
+      <TouchableOpacity onPress={() => navigation.navigate("LoginScreen")}>
+        <Text style={[styles.backLink, { color: "#007AFF" }]}>
+          Кіру экранына қайту
         </Text>
       </TouchableOpacity>
     </View>
   );
-});
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -129,7 +124,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     fontSize: 16,
   },
-  loginButton: {
+  resetButton: {
     height: 50,
     borderRadius: 10,
     justifyContent: "center",
@@ -137,20 +132,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   buttonText: {
-    color: "#FFFFFF", // White text on button
+    color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "600",
   },
-  forgotPasswordLink: {
-    fontSize: 14,
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  registerLink: {
+  backLink: {
     fontSize: 14,
     textAlign: "center",
   },
 });
 
-export { LoginScreen };
-export default LoginScreen;
+export default ForgotPasswordScreen;
