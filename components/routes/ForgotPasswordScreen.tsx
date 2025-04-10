@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import axios from "axios";
 import useAppColor from "../../themed/appColor";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const ForgotPasswordScreen = ({ navigation }: any) => {
   const appColor = useAppColor();
@@ -28,10 +29,15 @@ const ForgotPasswordScreen = ({ navigation }: any) => {
         { username, newPassword }
       );
 
+
+      const { token, username: responseUsername } = response.data;
+      await AsyncStorage.setItem("username", responseUsername);
+      await AsyncStorage.setItem("token", token);
+
       Alert.alert(
         "Сәтті",
         "Құпия сөз сәтті жаңартылды. Енді кіре аласыз.",
-        [{ text: "ОК", onPress: () => navigation.navigate("LoginScreen") }]
+        [{ text: "ОК", onPress: () => navigation.navigate("Home") }]
       );
     } catch (error: any) {
       console.log(error);
