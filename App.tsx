@@ -85,7 +85,9 @@ function App(): React.JSX.Element {
             presentation: 'modal'
           }}
         />
-<Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+<Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{
+  title: 'Жөңдеу',
+}} />
 <Stack.Screen 
           name="PrivacyPolicy" 
           component={PrivacyPolicy} 
@@ -127,7 +129,7 @@ function App(): React.JSX.Element {
           options={{
             presentation: 'modal',
             headerLeft: () => null,
-            title: 'Settings',
+            title: 'Жөңдеу',
           }} 
         />
 

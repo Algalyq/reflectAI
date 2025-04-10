@@ -24,15 +24,14 @@ const SettingsRoute = React.memo((props: any) => {
   const dispatch = useAppDispatch();
   const current_app_color = useAppSelector((state) => state.main.app_mode);
 
-  // Assume we have a username from storage or state
-
-  const [username, setUsername] = useState<string>('');
+  const [username, setUsername] = useState<string>("");
 
   useEffect(() => {
-    AsyncStorage.getItem('username').then(value => {
+    AsyncStorage.getItem("username").then((value) => {
       if (value) setUsername(value);
     });
   }, []);
+
   const handleSetColorMode = React.useCallback((mode?: any) => {
     const color_mode = mode ?? colorScheme;
     dispatch(setAppColorMode(color_mode));
@@ -69,15 +68,25 @@ const SettingsRoute = React.memo((props: any) => {
   };
 
   const handleDataManagementPress = () => {
-    setDataManagementModalVisible(true); // Show modal instead of navigating
+    setDataManagementModalVisible(true);
   };
 
   const handleDataAccessAgree = () => {
-    // Handle user agreement (e.g., save to storage, call API, etc.)
     Alert.alert("Сәтті", "Сіз деректерге қол жеткізуге келісім бердіңіз.", [
       { text: "ОК", onPress: () => setDataManagementModalVisible(false) },
     ]);
-    // You can add logic here, like updating state, calling an API, or storing consent in storage
+  };
+
+  const handleLogout = async () => {
+    try {
+      // Clear all AsyncStorage data
+      await AsyncStorage.clear();
+      // Navigate to LoginScreen
+      props.navigation.navigate('Login');
+    } catch (error) {
+      console.error("Error during logout:", error);
+      Alert.alert("Қате", "Шығу кезінде қате пайда болды.");
+    }
   };
 
   return (
@@ -305,12 +314,16 @@ const SettingsRoute = React.memo((props: any) => {
       </View>
 
       <View style={{ paddingHorizontal: 15, marginBottom: 20 }}>
+        <Text style={{ textTransform: "uppercase", color: appColor.text_color, padding: 10 }}>
+          Шығу
+        </Text>
         <ListContainer>
           <ListItem
             subContentStyle={{ borderBottomWidth: 0, borderBottomColor: "transparent" }}
             icon={<Icons.LogoutIcon style={{ width: 20, height: 20 }} />}
             title="Шығу"
             label=""
+            onPress={handleLogout} // Added onPress handler for logout
           />
         </ListContainer>
       </View>
