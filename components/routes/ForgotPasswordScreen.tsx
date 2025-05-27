@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Alert,
 } from "react-native";
-import axios from "axios";
 import useAppColor from "../../themed/appColor";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -16,6 +15,9 @@ const ForgotPasswordScreen = ({ navigation }: any) => {
   const [username, setUsername] = useState<string>("");
   const [newPassword, setNewPassword] = useState<string>("");
 
+  // Hardcoded valid username (matching the one in LoginScreen)
+  const validUsername = "admin";
+
   const handleResetPassword = async () => {
     if (!username || !newPassword) {
       Alert.alert("Қате", "Пайдаланушы аты мен жаңа құпия сөзді енгізіңіз.");
@@ -23,27 +25,29 @@ const ForgotPasswordScreen = ({ navigation }: any) => {
     }
 
     try {
-      // Simulate API call to reset password (replace with your actual endpoint)
-      const response = await axios.post(
-        "http://13.60.223.209/reset-password", // Replace with your actual reset password endpoint
-        { username, newPassword }
-      );
-
-
-      const { token, username: responseUsername } = response.data;
-      await AsyncStorage.setItem("username", responseUsername);
-      await AsyncStorage.setItem("token", token);
-
-      Alert.alert(
-        "Сәтті",
-        "Құпия сөз сәтті жаңартылды. Енді кіре аласыз.",
-        [{ text: "ОК", onPress: () => navigation.navigate("Home") }]
-      );
+      // Check if username matches our hardcoded valid username
+      if (username === validUsername) {
+        // Store username in AsyncStorage (no token needed anymore)
+        await AsyncStorage.setItem("username", username);
+        
+        // Show success message and navigate to Home
+        Alert.alert(
+          "Сәтті",
+          "Құпия сөз сәтті жаңартылды. Енді кіре аласыз.",
+          [{ text: "ОК", onPress: () => navigation.navigate("Home") }]
+        );
+      } else {
+        // Show error for invalid username
+        Alert.alert(
+          "Қате",
+          "Пайдаланушы аты табылмады"
+        );
+      }
     } catch (error: any) {
       console.log(error);
       Alert.alert(
         "Қате",
-        error.response?.data?.message || "Құпия сөзді жаңарту сәтсіз аяқталды."
+        "Құпия сөзді жаңарту сәтсіз аяқталды."
       );
     }
   };

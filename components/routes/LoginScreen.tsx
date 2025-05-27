@@ -7,9 +7,8 @@ import {
   StyleSheet,
   Alert,
 } from "react-native";
-import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LoginRequest, LoginResponse, NavigationProps } from "../../shared/types";
+import { NavigationProps } from "../../shared/types";
 import useAppColor from "../../themed/appColor";
 
 const LoginScreen = React.memo((props: any) => {
@@ -18,24 +17,33 @@ const LoginScreen = React.memo((props: any) => {
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
 
+  // Hardcoded credentials
+  const validCredentials = {
+    username: "admin",
+    password: "password123"
+  };
+
   const handleLogin = async () => {
-    const payload: LoginRequest = { username, password };
     try {
-      const response = await axios.post<LoginResponse>(
-        "http://13.60.223.209/authorize",
-        payload
-      );
-
-      const { token, username: responseUsername } = response.data;
-      await AsyncStorage.setItem("username", responseUsername);
-      await AsyncStorage.setItem("token", token);
-
-      navigation.navigate("Home");
+      // Check if credentials match hardcoded values
+      if (username === validCredentials.username && password === validCredentials.password) {
+        // Store username in AsyncStorage (no token needed anymore)
+        await AsyncStorage.setItem("username", username);
+        
+        // Navigate to Home screen on successful login
+        navigation.navigate("Home");
+      } else {
+        // Show error for invalid credentials
+        Alert.alert(
+          "Кіру сәтсіз аяқталды",
+          "Пайдаланушы аты немесе құпия сөз дұрыс емес"
+        );
+      }
     } catch (error: any) {
       console.log(error);
       Alert.alert(
         "Кіру сәтсіз аяқталды",
-        error.response?.data?.message || "Бірдеңе дұрыс болмады"
+        "Бірдеңе дұрыс болмады"
       );
     }
   };

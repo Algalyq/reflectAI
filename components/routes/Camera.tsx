@@ -1,95 +1,209 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
 import { RNCamera } from 'react-native-camera';
-import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import RNFS from 'react-native-fs';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { PermissionsAndroid } from 'react-native';
+
+type RNCameraType = RNCamera & {
+  takePictureAsync: (options: any) => Promise<{uri: string}>;
+};
+
+type EmotionResult = {
+  dominant_emotion: string;
+  emotion_distribution: {
+    happy: number;
+    neutral: number;
+    sad: number;
+    angry: number;
+    surprised: number;
+  };
+};
 
 const CameraPage = () => {
   const [emotion, setEmotion] = useState('Күтудемін...');
-  const [isRecording, setIsRecording] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const [timer, setTimer] = useState(7);
-  const cameraRef = useRef(null);
-  const navigation = useNavigation();
-  const timerRef = useRef(null);
+  const cameraRef = useRef<RNCameraType | null>(null);
+  const navigation = useNavigation<StackNavigationProp<any>>();
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // Request storage permissions on Android
+    const requestStoragePermission = async () => {
+      if (Platform.OS === 'android') {
+        try {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+            {
+              title: 'Storage Permission',
+              message: 'This app needs access to storage to save images.',
+              buttonNeutral: 'Ask Me Later',
+              buttonNegative: 'Cancel',
+              buttonPositive: 'OK',
+            }
+          );
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            Alert.alert('Error', 'Storage permission denied. Cannot save images.');
+          }
+        } catch (err) {
+          console.warn('Permission error:', err);
+        }
+      }
+    };
+
+    requestStoragePermission();
+
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
 
-  const startRecording = async () => {
-    if (cameraRef.current && !isRecording) {
-      setIsRecording(true);
-      setEmotion('Жазылуда...');
+  const startCapture = async () => {
+    if (cameraRef.current && !isCapturing) {
+      setIsCapturing(true);
+      setEmotion('Дайындалуда...');
       setTimer(7);
 
+      // Start a countdown timer
       timerRef.current = setInterval(() => {
         setTimer((prev) => {
-          if (prev <= 1) {
-            stopRecording();
-            return 0;
+          if (prev <= 4) {
+            if (timerRef.current) {
+              clearInterval(timerRef.current);
+            }
+            captureImage();
+            return prev - 1; // Continue countdown for UI
           }
           return prev - 1;
         });
       }, 1000);
+    }
+  };
 
+  const captureImage = async () => {
+    if (cameraRef.current) {
       try {
         const options = {
-          maxDuration: 7,
-          quality: RNCamera.Constants.VideoQuality['720p'],
+          quality: 0.85,
+          fixOrientation: true,
+          forceUpOrientation: true,
         };
 
-        const video = await cameraRef.current.recordAsync(options);
-        stopRecording();
-        await processVideo(video.uri);
+        const data = await cameraRef.current.takePictureAsync(options);
+        const imagePath = await saveImage(data.uri);
+        setIsCapturing(false);
+        await processImage(data.uri, imagePath);
       } catch (error) {
-        console.error('Recording error:', error);
-        setEmotion('Жазба сәтсіз аяқталды');
-        stopRecording();
+        console.error('Capture error:', error);
+        setEmotion('Суретке түсіру сәтсіз аяқталды');
+        setIsCapturing(false);
+        Alert.alert('Error', 'Failed to capture image.');
       }
     }
   };
 
-  const stopRecording = () => {
-    if (cameraRef.current && isRecording) {
-      cameraRef.current.stopRecording();
-      setIsRecording(false);
-      if (timerRef.current) clearInterval(timerRef.current);
+  const saveImage = async (imageUri: string): Promise<string> => {
+    try {
+      const imageName = `emotion_capture_${Date.now()}.jpg`;
+      const imgDir = `${RNFS.DocumentDirectoryPath}/model/img`;
+      const destPath = `${imgDir}/${imageName}`;
+
+      // Create directory if it doesn't exist
+      const dirExists = await RNFS.exists(imgDir);
+      if (!dirExists) {
+        await RNFS.mkdir(imgDir);
+      }
+
+      // Save the image
+      await RNFS.copyFile(imageUri, destPath);
+      console.log(`Image saved to: ${destPath}`);
+      return destPath;
+    } catch (error) {
+      console.error('Error saving image:', error);
+      Alert.alert('Error', 'Failed to save image to model/img.');
+      throw error;
     }
   };
 
-  const processVideo = async (videoUri) => {
-    setEmotion('Өңделуде...');
-    const formData = new FormData();
-    formData.append('video', {
-      uri: videoUri,
-      type: 'video/mp4',
-      name: 'video.mp4',
-    });
-
+  const processImage = async (imageUri: string, imagePath: string): Promise<void> => {
     try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) throw new Error('Token not found');
+      setEmotion('Өңделуде...');
 
-      const response = await axios.post(
-        'http://13.60.223.209/analyze_emotion',
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // Create FormData to send the image file
+      const formData = new FormData();
+      formData.append('image', {
+        uri: imageUri,
+        name: 'image.jpg',
+        type: 'image/jpeg',
+      });
 
-      const result = response.data;
+      // Send the image to the Flask server
+      const result = await callEmotionAnalysisServer(formData);
+
+      // Update UI and navigate to results
       setEmotion(`Басым Эмоция: ${result.dominant_emotion}`);
-      navigation.navigate('ChatPage', { result: result, fromCamera: true });
+      navigation.navigate('ChatPage', { result, imagePath, fromCamera: true });
     } catch (error) {
-      console.error('API error:', error);
-      setEmotion('Бейнені өңдеу қатесі');
+      console.error('Processing error:', error);
+      setEmotion('Суретті өңдеу қатесі');
+      Alert.alert('Error', 'Failed to process image.');
+    }
+  };
+
+  const callEmotionAnalysisServer = async (formData: FormData): Promise<EmotionResult> => {
+    try {
+      const serverUrl = 'http://172.20.10.2:5001/analyze';
+      const response = await fetch(serverUrl, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Server error: ${errorText}`);
+      }
+
+      // Read response body once and parse it
+      const text = await response.text();
+      console.log('Response:', text);
+      const data = JSON.parse(text);
+      console.log('Data:', data);
+
+      // Check if faces array exists and is non-empty
+      if (!data.faces || !Array.isArray(data.faces) || data.faces.length === 0) {
+        throw new Error('No faces detected in the image');
+      }
+
+      // Map the response to EmotionResult
+      const face = data.faces[0];
+      return {
+        dominant_emotion: face.dominant_emotion,
+        emotion_distribution: {
+          happy: face.emotion.happy,
+          neutral: face.emotion.neutral,
+          sad: face.emotion.sad,
+          angry: face.emotion.angry,
+          surprised: face.emotion.surprise,
+        },
+      };
+    } catch (error) {
+      console.error('Error calling emotion analysis server:', error);
+      Alert.alert('Error', `Failed to analyze emotion: ${error.message}`);
+      return {
+        dominant_emotion: 'unknown',
+        emotion_distribution: {
+          happy: 0,
+          neutral: 0,
+          sad: 0,
+          angry: 0,
+          surprised: 0,
+        },
+      };
     }
   };
 
@@ -99,22 +213,23 @@ const CameraPage = () => {
         ref={cameraRef}
         style={styles.camera}
         type={RNCamera.Constants.Type.front}
-        captureAudio={true}
+        captureAudio={false}
       >
         <View style={styles.emotionContainer}>
           <Text style={styles.emotionText}>{emotion}</Text>
-          {isRecording && (
-            <Text style={styles.timerText}>Жазу: {timer} сек</Text>
+          {isCapturing && (
+            <Text style={styles.timerText}>Дайындалуда: {timer} сек</Text>
           )}
         </View>
       </RNCamera>
 
       <TouchableOpacity
         style={styles.button}
-        onPress={isRecording ? stopRecording : startRecording}
+        onPress={isCapturing ? undefined : startCapture}
+        disabled={isCapturing}
       >
         <Text style={styles.buttonText}>
-          {isRecording ? 'Жазуды Тоқтату' : 'Жазуды Бастау'}
+          {isCapturing ? 'Түсірілуде...' : 'Суретке түсіру'}
         </Text>
       </TouchableOpacity>
     </View>
