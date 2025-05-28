@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import RNFS from 'react-native-fs';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { PermissionsAndroid } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 
 type RNCameraType = RNCamera & {
   takePictureAsync: (options: any) => Promise<{uri: string}>;
@@ -25,6 +26,7 @@ const CameraPage = () => {
   const [emotion, setEmotion] = useState('Күтудемін...');
   const [isCapturing, setIsCapturing] = useState(false);
   const [timer, setTimer] = useState(7);
+  const [serverIp, setServerIp] = useState('172.20.10.2'); // Default IP address
   const cameraRef = useRef<RNCameraType | null>(null);
   const navigation = useNavigation<StackNavigationProp<any>>();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -54,11 +56,30 @@ const CameraPage = () => {
     };
 
     requestStoragePermission();
-
+    // Get device IP address
+    getDeviceIpAddress();
+    
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
     };
   }, []);
+
+  // Function to get the device IP address
+  const getDeviceIpAddress = async () => {
+    try {
+      const state = await NetInfo.fetch();
+      if (state.type === 'wifi' && state.details && state.details.ipAddress) {
+        console.log('Device IP address:', state.details.ipAddress);
+        setServerIp(state.details.ipAddress);
+      } else {
+        console.log('Unable to get IP address or not on WiFi, using default IP');
+      }
+    } catch (error) {
+      console.error('Error getting IP address:', error);
+    }
+  };
 
   const startCapture = async () => {
     if (cameraRef.current && !isCapturing) {
@@ -154,7 +175,8 @@ const CameraPage = () => {
 
   const callEmotionAnalysisServer = async (formData: FormData): Promise<EmotionResult> => {
     try {
-      const serverUrl = 'http://172.20.10.2:5001/analyze';
+      const serverUrl = `http://${serverIp}:5001/analyze`;
+      console.log('Using server URL:', serverUrl);
       const response = await fetch(serverUrl, {
         method: 'POST',
         body: formData,
