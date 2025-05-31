@@ -96,7 +96,7 @@ const ForgotPasswordScreen = ({ navigation }: any) => {
         <Text style={styles.buttonText}>Құпия сөзді жаңарту</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate("LoginScreen")}>
+      <TouchableOpacity onPress={() => navigation.navigate("Login")}>
         <Text style={[styles.backLink, { color: "#007AFF" }]}>
           Кіру экранына қайту
         </Text>

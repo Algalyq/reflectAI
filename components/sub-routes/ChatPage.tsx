@@ -240,7 +240,8 @@ const ChatPage = React.memo(({ navigation, route }) => {
     <View style={[styles.text_box_container, { backgroundColor: appColor.main_bg }]}>
       <View style={{ flexDirection: 'row', flexShrink: 1, marginRight: 20, alignItems: 'center' }}>
         {main_icons_hidden ? (
-          <></>
+          <>
+           </>
         ) : (
           <>
             <Icons.CameraIcon
